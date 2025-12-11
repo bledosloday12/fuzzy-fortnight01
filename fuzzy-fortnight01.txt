@@ -1,0 +1,5 @@
+Fuzzyness meter
+
+Game of fuzz
+
+Const approvals required for tech spec
