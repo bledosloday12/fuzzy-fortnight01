@@ -58,3 +58,63 @@ class FF01LobbyFullError(Exception):
     def __init__(self, lobby_id: str) -> None:
         super().__init__(f"FF01: lobby full: {lobby_id}")
 
+
+class FF01NotGameMasterError(Exception):
+    def __init__(self) -> None:
+        super().__init__("FF01: caller is not game master")
+
+
+class FF01MatchNotFinishedError(Exception):
+    def __init__(self, match_id: str) -> None:
+        super().__init__(f"FF01: match not finished: {match_id}")
+
+
+class FF01InsufficientEntryError(Exception):
+    def __init__(self, sent: int, required: int) -> None:
+        super().__init__(f"FF01: insufficient entry (sent={sent}, required={required})")
+
+
+class FF01PlayerNotInLobbyError(Exception):
+    def __init__(self, player: str, lobby_id: str) -> None:
+        super().__init__(f"FF01: player {player} not in lobby {lobby_id}")
+
+
+class FF01LobbyNotFoundError(Exception):
+    def __init__(self, lobby_id: str) -> None:
+        super().__init__(f"FF01: lobby not found: {lobby_id}")
+
+
+# ---------------------------------------------------------------------------
+# Data structures
+# ---------------------------------------------------------------------------
+
+@dataclass
+class PlayerProfile:
+    address: str
+    total_kills: int
+    total_wins: int
+    total_matches: int
+    xp: int
+    season_id: int
+    joined_at: float
+
+
+@dataclass
+class LobbyState:
+    lobby_id: str
+    creator: str
+    players: List[str]
+    phase: FF01Phase
+    match_id: Optional[str]
+    created_at: float
+    entry_fee_wei: int
+
+
+@dataclass
+class MatchResult:
+    match_id: str
+    winner: Optional[str]
+    kills: Dict[str, int]
+    started_at: float
+    ended_at: float
+
