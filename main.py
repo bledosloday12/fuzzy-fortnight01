@@ -358,3 +358,63 @@ def ff01_xp_to_next_rank(xp: int) -> int:
 # ---------------------------------------------------------------------------
 # Squad helper (max 4 per squad)
 # ---------------------------------------------------------------------------
+
+def ff01_build_squads(players: List[str]) -> List[List[str]]:
+    squads: List[List[str]] = []
+    for i in range(0, len(players), FF01_MAX_SQUAD_SIZE):
+        squads.append(players[i : i + FF01_MAX_SQUAD_SIZE])
+    return squads
+
+
+def ff01_squad_count(player_count: int) -> int:
+    return (player_count + FF01_MAX_SQUAD_SIZE - 1) // FF01_MAX_SQUAD_SIZE
+
+
+# ---------------------------------------------------------------------------
+# Season manager
+# ---------------------------------------------------------------------------
+
+class FF01SeasonManager:
+    def __init__(self, engine: FuzzyFortnight01) -> None:
+        self._engine = engine
+
+    def current_season(self) -> int:
+        return self._engine.get_current_season_id()
+
+    def rotate_season(self, caller: str) -> bool:
+        if caller.strip().lower() != FF01_SEASON_ORACLE.strip().lower():
+            return False
+        self._engine._current_season_id += 1
+        self._engine._emit(FF01Event.SEASON_ROTATED, {"seasonId": self._engine._current_season_id})
+        return True
+
+    def season_duration_seconds(self) -> int:
+        return FF01_SEASON_DURATION_DAYS * 86400
+
+
+# ---------------------------------------------------------------------------
+# Leaderboard and stats helpers
+# ---------------------------------------------------------------------------
+
+def ff01_top_by_kills(engine: FuzzyFortnight01, limit: int) -> List[Tuple[str, int]]:
+    pairs = [(addr, p.total_kills) for addr, p in engine._profiles.items()]
+    pairs.sort(key=lambda x: x[1], reverse=True)
+    return pairs[:limit]
+
+
+def ff01_top_by_wins(engine: FuzzyFortnight01, limit: int) -> List[Tuple[str, int]]:
+    pairs = [(addr, p.total_wins) for addr, p in engine._profiles.items()]
+    pairs.sort(key=lambda x: x[1], reverse=True)
+    return pairs[:limit]
+
+
+def ff01_top_by_xp(engine: FuzzyFortnight01, limit: int) -> List[Tuple[str, int]]:
+    pairs = [(addr, p.xp) for addr, p in engine._profiles.items()]
+    pairs.sort(key=lambda x: x[1], reverse=True)
+    return pairs[:limit]
+
+
+def ff01_match_duration_sec(match_result: MatchResult) -> float:
+    if match_result.ended_at <= 0:
+        return 0.0
+    return match_result.ended_at - match_result.started_at
