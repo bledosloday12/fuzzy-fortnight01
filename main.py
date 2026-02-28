@@ -418,3 +418,63 @@ def ff01_match_duration_sec(match_result: MatchResult) -> float:
     if match_result.ended_at <= 0:
         return 0.0
     return match_result.ended_at - match_result.started_at
+
+
+def ff01_total_kills_in_match(match_result: MatchResult) -> int:
+    return sum(match_result.kills.values())
+
+
+# ---------------------------------------------------------------------------
+# Validation helpers
+# ---------------------------------------------------------------------------
+
+def ff01_valid_address(addr: str) -> bool:
+    if not addr or len(addr) != 42:
+        return False
+    if addr[:2] != "0x":
+        return False
+    try:
+        int(addr[2:], 16)
+        return True
+    except ValueError:
+        return False
+
+
+def ff01_can_join_lobby(engine: FuzzyFortnight01, lobby_id: str, player: str, value_wei: int) -> Tuple[bool, Optional[str]]:
+    lobby = engine.get_lobby(lobby_id)
+    if not lobby:
+        return False, "Lobby not found"
+    if lobby.phase != FF01Phase.WAITING:
+        return False, "Match already started"
+    if len(lobby.players) >= FF01_MAX_PLAYERS_PER_LOBBY:
+        return False, "Lobby full"
+    if value_wei < lobby.entry_fee_wei:
+        return False, "Insufficient entry fee"
+    return True, None
+
+
+def ff01_prize_share_wei(match_result: MatchResult, is_winner: bool) -> int:
+    pool = len(match_result.kills) * FF01_ENTRY_FEE_WEI
+    share_bp = FF01_PRIZE_POOL_BP if is_winner else 0
+    return (pool * share_bp) // FF01_BP_DENOM
+
+
+# ---------------------------------------------------------------------------
+# Loot drop simulation (rarity-weighted)
+# ---------------------------------------------------------------------------
+
+FF01_LOOT_WEIGHTS = [50, 30, 12, 5, 3]  # Common to Legendary
+
+
+def ff01_roll_loot_drop(seed: str, roll_index: int) -> str:
+    h = hashlib.sha256(f"{seed}-drop-{roll_index}".encode()).hexdigest()
+    r = int(h[24:32], 16) % 100
+    cum = 0
+    for i, w in enumerate(FF01_LOOT_WEIGHTS):
+        cum += w
+        if r < cum:
+            return FF01_LOOT_RARITY[i]
+    return FF01_LOOT_RARITY[-1]
+
+
+def ff01_roll_weapon(seed: str, roll_index: int) -> str:
