@@ -178,3 +178,63 @@ class FuzzyFortnight01:
             raise FF01InsufficientEntryError(value_wei, lobby.entry_fee_wei)
         key = player.strip().lower()
         if key not in [p.lower() for p in lobby.players]:
+            lobby.players.append(player)
+        self._emit(FF01Event.PLAYER_JOINED, {"lobbyId": lobby_id, "player": player})
+
+    def start_match(self, lobby_id: str, caller: str) -> str:
+        if lobby_id not in self._lobbies:
+            raise FF01LobbyNotFoundError(lobby_id)
+        lobby = self._lobbies[lobby_id]
+        if caller.strip().lower() != lobby.creator.strip().lower():
+            raise FF01NotGameMasterError()
+        if len(lobby.players) < FF01_MIN_PLAYERS_TO_START:
+            raise FF01LobbyFullError(lobby_id)
+        mid = f"match-{self._next_match_id}"
+        self._next_match_id += 1
+        lobby.phase = FF01Phase.IN_PROGRESS
+        lobby.match_id = mid
+        self._matches[mid] = MatchResult(
+            match_id=mid,
+            winner=None,
+            kills={p: 0 for p in lobby.players},
+            started_at=time.time(),
+            ended_at=0.0,
+        )
+        self._emit(FF01Event.MATCH_STARTED, {"matchId": mid, "lobbyId": lobby_id, "playerCount": len(lobby.players)})
+        return mid
+
+    def record_kill(self, match_id: str, killer: str, victim: str, caller: str) -> None:
+        if match_id not in self._matches:
+            return
+        m = self._matches[match_id]
+        if m.ended_at > 0:
+            return
+        k = killer.strip().lower()
+        v = victim.strip().lower()
+        keys = [x.lower() for x in m.kills.keys()]
+        if k in keys:
+            m.kills[killer] = m.kills.get(killer, 0) + 1
+        self._emit(FF01Event.KILL_RECORDED, {"matchId": match_id, "killer": killer, "victim": victim})
+
+    def end_match(self, match_id: str, winner: Optional[str], caller: str) -> None:
+        if match_id not in self._matches:
+            raise FF01LobbyNotFoundError(match_id)
+        m = self._matches[match_id]
+        m.winner = winner
+        m.ended_at = time.time()
+        for addr, k in m.kills.items():
+            prof = self._profiles.get(addr.lower())
+            if not prof:
+                prof = PlayerProfile(addr, 0, 0, 0, 0, self._current_season_id, time.time())
+                self._profiles[addr.lower()] = prof
+            prof.total_kills += k
+            prof.total_matches += 1
+            prof.xp += k * FF01_XP_PER_KILL
+        if winner:
+            w = self._profiles.get(winner.strip().lower())
+            if w:
+                w.total_wins += 1
+                w.xp += FF01_XP_PER_WIN
+        self._emit(FF01Event.MATCH_ENDED, {"matchId": match_id, "winner": winner})
+
+    def claim_prize(self, match_id: str, player: str) -> int:
