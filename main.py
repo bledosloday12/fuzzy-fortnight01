@@ -238,3 +238,63 @@ class FuzzyFortnight01:
         self._emit(FF01Event.MATCH_ENDED, {"matchId": match_id, "winner": winner})
 
     def claim_prize(self, match_id: str, player: str) -> int:
+        if match_id not in self._matches:
+            raise FF01LobbyNotFoundError(match_id)
+        m = self._matches[match_id]
+        if m.ended_at <= 0:
+            raise FF01MatchNotFinishedError(match_id)
+        pool = len(m.kills) * FF01_ENTRY_FEE_WEI
+        share = (pool * FF01_PRIZE_POOL_BP) // FF01_BP_DENOM
+        if m.winner and player.strip().lower() == m.winner.strip().lower():
+            return share
+        return 0
+
+    def get_player_profile(self, address: str) -> Optional[PlayerProfile]:
+        return self._profiles.get(address.strip().lower())
+
+    def get_lobby(self, lobby_id: str) -> Optional[LobbyState]:
+        return self._lobbies.get(lobby_id)
+
+    def get_match(self, match_id: str) -> Optional[MatchResult]:
+        return self._matches.get(match_id)
+
+    def get_event_log(self) -> List[Tuple[FF01Event, Dict[str, Any]]]:
+        return list(self._event_log)
+
+    def arena_fingerprint(self) -> str:
+        return hashlib.sha256(
+            f"{FF01_ARENA_SEED}-{self._current_season_id}-{len(self._matches)}-{FF01_DEPLOY_SALT}".encode()
+        ).hexdigest()[:32]
+
+    def get_season_oracle(self) -> str:
+        return self._season_oracle
+
+    def get_loot_controller(self) -> str:
+        return self._loot_controller
+
+    def get_current_season_id(self) -> int:
+        return self._current_season_id
+
+    def list_lobby_ids(self) -> List[str]:
+        return list(self._lobbies.keys())
+
+    def list_match_ids(self) -> List[str]:
+        return list(self._matches.keys())
+
+    def total_prize_pool_estimate(self, player_count: int) -> int:
+        pool = player_count * FF01_ENTRY_FEE_WEI
+        return (pool * FF01_PRIZE_POOL_BP) // FF01_BP_DENOM
+
+
+# ---------------------------------------------------------------------------
+# Loot and weapon tables (battle-royale flavour)
+# ---------------------------------------------------------------------------
+
+FF01_WEAPON_NAMES = [
+    "ScatterBlaster", "SnipeRay", "PlasmaRifle", "RocketLauncher", "LaserPistol",
+    "FrostCannon", "ChaosGrenade", "VoidBow", "FlameThrower", "TeslaCoil",
+    "GravityHammer", "ShockBaton", "PoisonDart", "SilentKnife", "MegaShotgun",
+]
+
+FF01_LOOT_RARITY = ["Common", "Uncommon", "Rare", "Epic", "Legendary"]
+
