@@ -298,3 +298,63 @@ FF01_WEAPON_NAMES = [
 
 FF01_LOOT_RARITY = ["Common", "Uncommon", "Rare", "Epic", "Legendary"]
 
+FF01_MAP_NAMES = [
+    "DustyDesert", "FrostPeak", "ToxicSwamp", "NeonCity", "RuinIsland",
+    "VolcanoBase", "SkyPlatform", "UndergroundBunker", "JungleTemple", "SpaceStation",
+]
+
+FF01_SKIN_IDS = [
+    "default", "camo", "gold", "neon", "shadow", "fire", "ice", "robot", "phantom", "crypto_bro",
+]
+
+FF01_EMOTE_IDS = [
+    "dance", "wave", "laugh", "salute", "cry", "heart", "flex", "sit", "sleep", "victory",
+]
+
+
+def ff01_weapon_for_seed(seed: str, index: int) -> str:
+    h = hashlib.sha256(f"{seed}-weapon-{index}".encode()).hexdigest()
+    idx = int(h[:8], 16) % len(FF01_WEAPON_NAMES)
+    return FF01_WEAPON_NAMES[idx]
+
+
+def ff01_loot_rarity_for_seed(seed: str, index: int) -> str:
+    h = hashlib.sha256(f"{seed}-loot-{index}".encode()).hexdigest()
+    idx = int(h[8:16], 16) % len(FF01_LOOT_RARITY)
+    return FF01_LOOT_RARITY[idx]
+
+
+def ff01_map_for_match(match_id: str) -> str:
+    h = hashlib.sha256(f"{FF01_ARENA_SEED}-map-{match_id}".encode()).hexdigest()
+    idx = int(h[16:24], 16) % len(FF01_MAP_NAMES)
+    return FF01_MAP_NAMES[idx]
+
+
+# ---------------------------------------------------------------------------
+# XP tiers and rank names
+# ---------------------------------------------------------------------------
+
+FF01_XP_TIERS = [0, 500, 1500, 3500, 7500, 15000, 30000, 60000, 120000, 250000]
+
+FF01_RANK_NAMES = [
+    "Newbie", "Rookie", "Fighter", "Veteran", "Champion", "Elite", "Master", "Grandmaster", "Legend", "Apex",
+]
+
+
+def ff01_rank_for_xp(xp: int) -> str:
+    for i in range(len(FF01_XP_TIERS) - 1, -1, -1):
+        if xp >= FF01_XP_TIERS[i]:
+            return FF01_RANK_NAMES[min(i, len(FF01_RANK_NAMES) - 1)]
+    return FF01_RANK_NAMES[0]
+
+
+def ff01_xp_to_next_rank(xp: int) -> int:
+    for tier in FF01_XP_TIERS:
+        if xp < tier:
+            return tier - xp
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Squad helper (max 4 per squad)
+# ---------------------------------------------------------------------------
